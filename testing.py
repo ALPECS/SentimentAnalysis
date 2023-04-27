@@ -4,15 +4,17 @@ import pandas as pd
 import tweepy
 import openai
 import re
+from tqdm import tqdm
+import seaborn as sns
 
 
-# Method for getting data given a ticker
-def getData(ticker):
+# Function for getting data given a ticker
+def getData(ticker,data):
     tweet_dataset = []
     tweets = twitterAPI.search_tweets(q=ticker + ' -filter:retweets -filter:replies',
                                       lang="en",
                                       result_type="recent",
-                                      count=10
+                                      count=data
                                       )
     for tweet in tweets:
         tweet_content = {'id': tweet.id,
@@ -27,10 +29,11 @@ def getData(ticker):
     return tweet_dataframe
 
 
-def get_sentiment(text):
-    prompt_text = """Classify the sentiment of the following tweet as positive, negative, or neutral towards Microsoft. 
+# Function for getting sentiment of tweet
+def get_sentiment(text, ticker):
+    prompt_text = """Classify the sentiment of the following tweet as positive, negative, or neutral towards {}.
     text: {}
-    sentiment: """.format(text)
+    sentiment: """.format(ticker, text)
 
     sentiment = openai.Completion.create(
         model="gpt-3.5-turbo",
@@ -49,10 +52,26 @@ def get_sentiment(text):
 consumer_key = "BkEPb0jyEMmw878gj74vOrkFY"
 consumer_secret = "24dZiQhAZdTX4QFuZc9EZpfYJdnw83tzTARVq9KH0mITjQrcyE"
 bearer_token = "AAAAAAAAAAAAAAAAAAAAAL4NnAEAAAAAp%2BpBIxt%2FjZja7nn5wEZtInIgCAs%3DFzdsKA1nkcN6OrdDlCGiuKHcpRDowA8lcNAmZT0FVwl5YefguE"
+openai.api_key = 'pk-JsMTVtPJVasDqBDFMosXZqmbfTRPYxhWbvCWRqzhkTDGGpUe'
+openai.api_base = 'https://api.pawan.krd/v1'
 
 # Connect to the Twitter API
 auth = tweepy.AppAuthHandler(consumer_key, consumer_secret)
 twitterAPI = tweepy.API(auth)
 
-# Get your pandas dataframe
-tweet_df = getData("RDNT")
+# Supply the key word, and the ammount of data you want and get your pandas dataframe
+data = 100
+keyWord = "Bitcoin"
+tweet_df = getData(keyWord)
+
+tqdm.pandas()
+
+tweet_df['sentiment'] = tweet_df['text'].progress_apply(lambda x: get_sentiment(x, keyWord))
+tweet_df.head()
+
+sns.set_style("darkgrid")
+sns.set(rc={'figure.figsize': (10, 7)})
+sns.set_context("poster")
+
+print(tweet_df['sentiment'].value_counts())
+sns.countplot(x='sentiment', data=tweet_df)
